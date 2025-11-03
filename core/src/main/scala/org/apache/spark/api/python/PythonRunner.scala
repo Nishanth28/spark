@@ -604,10 +604,23 @@ private[spark] abstract class BasePythonRunner[IN, OUT](
       val init = initTime - bootTime
       val finish = finishTime - initTime
       val total = finishTime - startTime
-      logInfo(log"Times: total = ${MDC(LogKeys.TOTAL_TIME, total)}, " +
+
+      // ENHANCEMENT: Add task context and data metrics for better debugging
+      val taskAttemptId = context.taskAttemptId()
+      val partitionId = context.partitionId()
+      val recordsRead = context.taskMetrics().inputMetrics.recordsRead
+      val bytesReadKB = context.taskMetrics().inputMetrics.bytesRead / 1024
+
+      // Log with enhanced context (includes task ID, partition, and data metrics)
+      logInfo(log"Task ${MDC(LogKeys.TASK_ATTEMPT_ID, taskAttemptId)}, " +
+        log"Partition ${MDC(LogKeys.PARTITION_ID, partitionId)} - " +
+        log"Times: total = ${MDC(LogKeys.TOTAL_TIME, total)}, " +
         log"boot = ${MDC(LogKeys.BOOT_TIME, boot)}, " +
         log"init = ${MDC(LogKeys.INIT_TIME, init)}, " +
-        log"finish = ${MDC(LogKeys.FINISH_TIME, finish)}")
+        log"finish = ${MDC(LogKeys.FINISH_TIME, finish)} - " +
+        log"Records: ${MDC(LogKeys.NUM_RECORDS_READ, recordsRead)}, " +
+        log"DataKB: ${MDC(LogKeys.TOTAL_SIZE, bytesReadKB)}")
+
       metrics.get("pythonBootTime").foreach(_.add(boot))
       metrics.get("pythonInitTime").foreach(_.add(init))
       metrics.get("pythonTotalTime").foreach(_.add(total))
